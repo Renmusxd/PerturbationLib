@@ -3,8 +3,6 @@ import itertools
 import sympy
 from sympy import Symbol
 
-hbar = Symbol('h')
-
 class braket:
     BRA = True
     KET = False
@@ -137,7 +135,7 @@ class State:
         :param mult: multiplier
         :param states: array of SingleStates: |a> + |b> + ...
         '''
-        self.states = [state.copy() for state in states]
+        self.states = [state.copy() for state in states if abs(state.mult)>0]
 
     @classmethod
     def initFromList(cls, particleStates, bk=braket.KET):
@@ -155,10 +153,16 @@ class State:
             return state + self
         elif state.__class__==State:
             retstate = self.copy()
-            for i in xrange(len(retstate.states)):
-                for j in xrange(len(state.states)):
-                    if retstate.states[i]==state.states[j]:
-                        retstate.states[i].mult += state.states[j].mult
+            for i in xrange(len(state.states)):
+                i_was_added = False
+                for j in xrange(len(retstate.states)):
+                    if retstate.states[j]==state.states[i]:
+                        retstate.states[j].mult += state.states[i].mult
+                        i_was_added = True
+                        break
+                if not i_was_added:
+                    retstate.states.append(state.states[i].copy())
+
             return retstate
 
     def __rmul__(self, other):
@@ -167,14 +171,13 @@ class State:
             for s_s in s.states:
                 s_s.mult *= other
             return s
-
-    def __rmul__(self, other):
-        total = 0
-        # For each of local states
-        for m_s in self.states:
-            # For each other state
-            total = total + (other * self)
-        return total
+        else:
+            total = 0
+            # For each of local states
+            for m_s in self.states:
+                # For each other state
+                total = total + (other * self)
+            return total
 
     def __mul__(self, other):
         '''
@@ -247,12 +250,13 @@ class COp(Operator):
             state = state.copy()
             for i in xrange(len(state.states)):
                 state.states[i].particles[self.index] += 1
-                state.states[i].mult += math.sqrt(state.states[i].particles[self.index])
+                state.states[i].mult *= math.sqrt(state.states[i].particles[self.index])
+            state.states = [s for s in state.states if abs(s.mult)>0]
             return state
         elif state.__class__==SingleState:
             state = state.copy()
             state.particles[self.index] += 1
-            state.mult += math.sqrt(state.particles[self.index])
+            state.mult *= math.sqrt(state.particles[self.index])
             return state
 
 class AOp(Operator):
@@ -266,12 +270,13 @@ class AOp(Operator):
         if state.__class__==State:
             state = state.copy()
             for i in xrange(len(state.states)):
-                state.states[i].mult += math.sqrt(state.states[i].particles[self.index])
+                state.states[i].mult *= math.sqrt(state.states[i].particles[self.index])
                 state.states[i].particles[self.index] -= 1
+            state.states = [s for s in state.states if abs(s.mult)>0]
             return state
         elif state.__class__==SingleState:
             state = state.copy()
-            state.mult += math.sqrt(state.particles[self.index])
+            state.mult *= math.sqrt(state.particles[self.index])
             state.particles[self.index] -= 1
             return state
 
@@ -279,7 +284,7 @@ class POperator(Operator):
     def __init__(self, ladders, mult=1):
         '''
         Creates a perturbation operator
-        Operator([1,2]) -> x.y^2
+        POperator([1,2]) -> x.y^2
         :param ladders: position operators for perturbation
         :param mult: multiplier of perturbation 'lambda'
         '''
@@ -304,7 +309,7 @@ class POperator(Operator):
         output_states = []
         # For each particle
         for l_indx in xrange(len(self.pert)):
-            # For each possible number of creation (implicite and annihilation) operators
+            # For each possible number of creation (implicit and annihilation) operators
             for ladder_value in xrange(self.pert[l_indx]):
                 # Create list of operators
                 used_ops = [COp(l_indx)]*ladder_value + [AOp(l_indx)]*(self.pert[l_indx]-(ladder_value+1))
@@ -320,12 +325,3 @@ class POperator(Operator):
                     acc_state.mult += sel_state.mult
                 output_states.append(acc_state)
         return output_states
-
-def work():
-    a = SingleState([1,0])
-    b = SingleState([2,0])
-    c = SingleState([0,1])
-    d = a+b+c+c
-    e = d.transpose() * c
-    f = ( XOp(1) * c)
-    print f

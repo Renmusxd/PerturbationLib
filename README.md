@@ -1,2 +1,2 @@
 # PerturbationLib
-Perturbation Helper python library
+A QFT perturbation Theory python library

@@ -1,7 +1,5 @@
-import math
 import itertools
 import sympy
-from sympy import Symbol
 
 class braket:
     BRA = True
@@ -19,11 +17,8 @@ class SingleState:
         :param other: other SingleState
         :return: True/False
         '''
-        if other.__class__==self.__class__ and self.bk==other.bk:
-            for i in xrange(len(self.particles)):
-                if self.particles[i]!=other.particles[i]:
-                    return False
-            return True
+        if other.__class__==self.__class__:
+            return canAddSingleStates(self,other)
         return False
 
     def __ne__(self, other):
@@ -87,29 +82,7 @@ class SingleState:
         raise TypeError("unsupported operand type(s)")
 
     def __add__(self, other):
-        if self==other:
-            return SingleState(self.particles, mult=self.mult+other.mult, bk=self.bk)
-        elif other.__class__==SingleState:
-            s = other.copy()
-            if s==self:
-                s.mult += self.mult
-                return s
-            else:
-                return State([self, s])
-        elif other.__class__==State:
-            s = other.copy()
-            added = False
-            for s_s in s.states:
-                if s_s==self:
-                    s_s.mult += self.mult
-                    added = True
-                    break
-            if not added:
-                s.states.append(self.copy())
-            return s
-        else:
-            return other.__add__(self)
-
+        return addStates(self, other)
 
     def copy(self):
         return SingleState(self.particles, self.mult)
@@ -117,6 +90,7 @@ class SingleState:
     def transpose(self):
         s = self.copy()
         s.bk = not s.bk
+        s.mult = sympy.conjugate(s.mult)
         return s
 
     def __str__(self):
@@ -151,38 +125,21 @@ class State:
         return c
 
     def __add__(self, state):
-        if state.__class__==SingleState:
-            return state + self
-        elif state.__class__==State:
-            retstate = self.copy()
-            for i in xrange(len(state.states)):
-                i_was_added = False
-                for j in xrange(len(retstate.states)):
-                    if retstate.states[j]==state.states[i]:
-                        retstate.states[j].mult += state.states[i].mult
-                        i_was_added = True
-                        break
-                if not i_was_added:
-                    retstate.states.append(state.states[i].copy())
-
-            return retstate
+        return addStates(self, state)
 
     def __rmul__(self, other):
-        try:
-            if other.__class__==SingleState or other.__class__==State:
-                total = 0
-                # For each of local states
-                for m_s in self.states:
-                    # For each other state
-                    total = total + (other * self)
-                return total
-            else:
-                s = self.copy()
-                for s_s in s.states:
-                    s_s.mult *= other
-                return s
-        except:
-            return other.__mul__(self)
+        if other.__class__==SingleState or other.__class__==State:
+            total = 0
+            # For each of local states
+            for m_s in self.states:
+                # For each other state
+                total = total + (other * self)
+            return total
+        else:
+            s = self.copy()
+            for s_s in s.states:
+                s_s.mult *= other
+            return s
 
 
     def __mul__(self, other):
@@ -211,7 +168,6 @@ class State:
                 if self.states[i]!=other.states[i]:
                     return False
             return True
-
         return False
 
     def __neg__(self):
@@ -420,11 +376,11 @@ class OpProduct(Operator):
     def __str__(self):
         return self.__repr__()
     def __repr__(self):
-        mstr = "" if (self.mult==1) else str(self.mult)
+        mstr = "" if (self.mult == 1) else str(self.mult)
         return mstr+"(" + (" ".join([str(op) for op in self.ops])) + ")"
 
     def copy(self):
-        return OpProduct(self.ops,self.mult)
+        return OpProduct(self.ops, self.mult)
 
 class OpSum(Operator):
     def __init__(self, ops, mult=1):
@@ -513,8 +469,68 @@ class DeltaH(Operator):
                 for perm in perms:
                     sel_state = state.copy()
                     for op in perm:
-                        sel_state = op(sel_state)
+                        sel_state = op * sel_state
                     print sel_state
                     acc_state.mult += sel_state.mult
                 output_states.append(acc_state)
         return output_states
+
+
+# ===================================== #
+# Helper functions for above operations # =====================================
+# ===================================== #
+
+
+def canAddSingleStates(state1, state2):
+    if len(state1.particles)==len(state2.particles):
+        if state1.bk!=state2.bk:
+            return False
+        for i in xrange(len(state1.particles)):
+            if state1.particles[i]!=state2.particles[i]:
+                return False
+        return True
+    return False
+
+
+def addSingleStates(state1, state2):
+    if canAddSingleStates(state1,state2):
+        return SingleState(state1.particles,
+                           state1.mult + state2.mult,
+                           state1.bk)
+
+
+def addSingleStateToState(state, singlestate):
+    newstates = [s.copy() for s in state.states]
+    added = False
+    for i in xrange(len(newstates)):
+        if canAddSingleStates(singlestate,newstates[i]):
+            newstates[i] = addSingleStates(singlestate, newstates[i])
+            added = True
+            break
+    if not added:
+        newstates.append(singlestate.copy())
+    return State(newstates)
+
+
+def addStateToState(state1, state2):
+    newstate = state1.copy()
+    for s in (s.copy() for s in state2.states):
+        newstate = newstate + s
+    return newstate
+
+
+def addStates(state1, state2):
+    if state1.__class__ == State:
+        if state2.__class__ == State:
+            return addStateToState(state1, state2)
+        else:
+            return addSingleStateToState(state1, state2)
+    elif state2.__class__ == State:
+        if state1.__class__ == State:
+            return addStateToState(state2, state1)
+        else:
+            return addSingleStateToState(state2, state1)
+    elif state1.__class__ == SingleState and state2.__class__ == SingleState:
+        return addSingleStates(state1, state2)
+    else:
+        TypeError("Cannot add "+str(state1)+" and "+str(state2))

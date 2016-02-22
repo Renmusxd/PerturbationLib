@@ -503,6 +503,8 @@ def addSingleStates(state1, state2):
         return SingleState(state1.particles,
                            state1.mult + state2.mult,
                            state1.bk)
+    else:
+        return State([state1, state2])
 
 
 def addSingleStateToState(state, singlestate):

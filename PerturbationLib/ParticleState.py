@@ -405,7 +405,7 @@ class OpSum(Operator):
         elif other.__class__ == SingleState or other.__class__ == State:
             acc = State([])
             for op in self.ops:
-                acc += op * other
+                acc += op * other * self.mult
             return acc
         else:
             new = self.copy()
@@ -415,6 +415,11 @@ class OpSum(Operator):
     def __add__(self, other):
         if issubclass(other.__class__,Operator):
             if other.__class__ == OpSum:
+                # Add mult to each child
+                if self.mult!=1:
+                    for op in self.ops:
+                        op.mult *= self.mult
+                    self.mult = 1
                 return OpSum(self.ops + other.ops)
             else:
                 return OpSum(self.ops + [other])
@@ -424,10 +429,11 @@ class OpSum(Operator):
     def __str__(self):
         return self.__repr__()
     def __repr__(self):
-        return "(" + (" + ".join([str(op) for op in self.ops])) + ")"
+        mstr = "" if (self.mult == 1) else str(self.mult)
+        return mstr + "(" + (" + ".join([str(op) for op in self.ops])) + ")"
 
     def copy(self):
-        return OpSum(self.ops,self.mult)
+        return OpSum(self.ops, self.mult)
 
 class DeltaH(Operator):
     def __init__(self, ladders, mult=1):

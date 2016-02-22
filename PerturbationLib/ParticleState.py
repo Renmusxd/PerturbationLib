@@ -120,10 +120,11 @@ class SingleState:
         return s
 
     def __str__(self):
+        mstr = "" if self.mult==1 else str(self.mult)
         if self.bk == braket.KET:
-            return str(self.mult)+"|"+",".join([str(i) for i in self.particles])+">"
+            return mstr+"|"+",".join([str(i) for i in self.particles])+">"
         elif self.bk == braket.BRA:
-            return str(self.mult)+"<"+",".join([str(i) for i in self.particles])+"|"
+            return mstr+"<"+",".join([str(i) for i in self.particles])+"|"
     def __repr__(self):
         return self.__str__()
 
@@ -225,36 +226,60 @@ class State:
             newstate.states[i] = newstate.states[i].transpose()
         return newstate
 
-    def copy(self):
-        return State(self.states)
-
     def __repr__(self):
         strlist = [str(self.states[i]) for i in xrange(len(self.states))]
         return " + ".join(strlist)
 
+    def copy(self):
+        return State(self.states)
+
 class Operator:
-    pass
+    mult = 1
 
 class XOp(Operator):
     '''
     x = c(a + a')
     '''
-    X_const = 1
-    def __init__(self, index):
+    X_CONST = 1
+    def __init__(self, index,mult=1):
         self.index = index
+        self.mult = XOp.X_CONST * mult
 
     def __call__(self, state):
         return self.__mul__(state)
 
-    def __mul__(self, state):
-        return (COp(self.index) * state) + (AOp(self.index) * state)
+    def __mul__(self, other):
+        if other.__class__==SingleState or other.__class__==State:
+            return (COp(self.index) * other) + (AOp(self.index) * other)
+        elif issubclass(other.__class__,Operator):
+            # a * O -> [a O]
+            return OpProduct([self, other])
+        new = XOp(self.index)
+        new.mult *= other
+        return new
 
     def __add__(self, other):
-        pass #TODO
+        if issubclass(other.__class__,Operator):
+            if other.__class__ == OpSum:
+                return OpSum([self] + other.ops)
+            else:
+                return OpSum([self] + [other])
+        else:
+            raise TypeError("Cannot add operator to anything except operators")
+
+    def __str__(self):
+        return self.__repr__()
+    def __repr__(self):
+        mstr = "" if (self.mult==1) else str(self.mult)
+        return mstr + "x_" + str(self.index)
+
+    def copy(self):
+        return XOp(self.index,self.mult)
 
 class COp(Operator):
-    def __init__(self, index):
+    def __init__(self, index,mult=1):
         self.index = index
+        self.mult = mult
 
     def __call__(self, state):
         return self.__mul__(state)
@@ -275,19 +300,32 @@ class COp(Operator):
         elif issubclass(other.__class__,Operator):
             # a * O -> [a O]
             return OpProduct([self, other])
-        self.mult *= other
+        new = self.copy()
+        new.mult *= other
+        return new
 
     def __add__(self, other):
-        pass #TODO
+        if issubclass(other.__class__,Operator):
+            if other.__class__ == OpSum:
+                return OpSum([self] + other.ops)
+            else:
+                return OpSum([self] + [other])
+        else:
+            raise TypeError("Cannot add operator to anything except operators")
 
     def __str__(self):
         return self.__repr__()
     def __repr__(self):
-        return "a'_"+str(self.index)
+        mstr = "" if (self.mult==1) else str(self.mult)
+        return mstr+"a'_"+str(self.index)
+
+    def copy(self):
+        return COp(self.index,self.mult)
 
 class AOp(Operator):
-    def __init__(self, index):
+    def __init__(self, index, mult=1):
         self.index = index
+        self.mult = mult
 
     def __call__(self, state):
         return self.__mul__(state)
@@ -314,20 +352,36 @@ class AOp(Operator):
         elif issubclass(other.__class__,Operator):
             # a * O -> [a O]
             return OpProduct([self, other])
-        self.mult *= other
+        new = self.copy()
+        new.mult *= other
+        return new
 
     def __add__(self, other):
-        pass #TODO
+        if issubclass(other.__class__,Operator):
+            if other.__class__ == OpSum:
+                return OpSum([self] + other.ops)
+            else:
+                return OpSum([self] + [other])
+        else:
+            raise TypeError("Cannot add operator to anything except operators")
 
     def __str__(self):
         return self.__repr__()
     def __repr__(self):
-        return "a_"+str(self.index)
+        mstr = "" if (self.mult==1) else str(self.mult)
+        return mstr+"a_"+str(self.index)
+
+    def copy(self):
+        return AOp(self.index,self.mult)
 
 
 class OpProduct(Operator):
-    def __init__(self, ops):
-        self.ops = ops[:]
+    def __init__(self, ops, mult=1):
+        self.ops = [op.copy() for op in ops]
+        self.mult = mult
+        for op in self.ops:
+            self.mult *= op.mult
+            op.mult = 1
     def __rmul__(self, other):
         if issubclass(other.__class__, Operator):
             if other.__class__==OpProduct:
@@ -335,7 +389,9 @@ class OpProduct(Operator):
             else:
                 return OpProduct([other] + self.ops)
         else:
-            other.__mul__(self)
+            new = self.copy()
+            new.mult *= other
+            return new
     def __mul__(self, other):
         if issubclass(other.__class__,Operator):
             if other.__class__ == OpProduct:
@@ -347,46 +403,75 @@ class OpProduct(Operator):
             for op in reversed(self.ops):
                 acc = op * acc
             return acc
+        else:
+            new = self.copy()
+            new.mult *= other
+            return new
 
     def __add__(self, other):
-        pass #TODO
+        if issubclass(other.__class__,Operator):
+            if other.__class__ == OpSum:
+                return OpSum([self] + other.ops)
+            else:
+                return OpSum([self] + [other])
+        else:
+            raise TypeError("Cannot add operator to anything except operators")
 
     def __str__(self):
         return self.__repr__()
     def __repr__(self):
-        return " ".join([str(op) for op in self.ops])
+        mstr = "" if (self.mult==1) else str(self.mult)
+        return mstr+"(" + (" ".join([str(op) for op in self.ops])) + ")"
+
+    def copy(self):
+        return OpProduct(self.ops,self.mult)
 
 class OpSum(Operator):
-    def __init__(self, ops):
-        self.ops = ops[:]
+    def __init__(self, ops, mult=1):
+        self.ops = [op.copy() for op in ops]
+        self.mult = mult
     def __rmul__(self, other):
         if issubclass(other.__class__, Operator):
             if other.__class__==OpProduct:
-                return OpProduct(other.ops + self.ops)
+                return OpProduct(other.ops + [self])
             else:
-                return OpProduct([other] + self.ops)
+                return OpProduct([other] + [self])
         else:
-            other.__mul__(self)
+            new = self.copy()
+            new.mult *= other
+            return new
     def __mul__(self, other):
         if issubclass(other.__class__,Operator):
             if other.__class__ == OpProduct:
-                return OpProduct(self.ops + other.ops)
+                return OpProduct([self] + other.ops)
             else:
-                return OpProduct(self.ops + [other])
+                return OpProduct([self] + [other])
         elif other.__class__ == SingleState or other.__class__ == State:
             acc = State([])
-            for op in reversed(self.ops):
+            for op in self.ops:
                 acc += op * other
             return acc
-
+        else:
+            new = self.copy()
+            new.mult *= other
+            return new
 
     def __add__(self, other):
-        pass #TODO
+        if issubclass(other.__class__,Operator):
+            if other.__class__ == OpSum:
+                return OpSum(self.ops + other.ops)
+            else:
+                return OpSum(self.ops + [other])
+        else:
+            raise TypeError("Cannot add operator to anything except operators")
 
     def __str__(self):
         return self.__repr__()
     def __repr__(self):
-        return " ".join([str(op) for op in self.ops])
+        return "(" + (" + ".join([str(op) for op in self.ops])) + ")"
+
+    def copy(self):
+        return OpSum(self.ops,self.mult)
 
 class DeltaH(Operator):
     def __init__(self, ladders, mult=1):

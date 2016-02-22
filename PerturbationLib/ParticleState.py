@@ -52,12 +52,13 @@ class SingleState:
                 raise Exception("We do not yet support tensor multiplication")
         elif other.__class__==State:
             return sum( [self * state for state in other.states ] )
-        elif type(other)==int or type(other)==float:
-            s = self.copy()
-            s.mult *= other
-            return s
         else:
-            return other.__mult__(self)
+            try:
+                s = self.copy()
+                s.mult *= other
+                return s
+            except:
+                return other.__mul__(self)
 
     def __mul__(self, other):
         '''
@@ -79,7 +80,7 @@ class SingleState:
                 raise Exception("We do not yet support tensor multiplication")
         elif other.__class__==State:
             return sum( [self * state for state in other.states ] )
-        elif type(other)==int or type(other)==float:
+        else:
             s = self.copy()
             s.mult *= other
             return s
@@ -166,18 +167,22 @@ class State:
             return retstate
 
     def __rmul__(self, other):
-        if type(other)==int or type(other)==float:
-            s = self.copy()
-            for s_s in s.states:
-                s_s.mult *= other
-            return s
-        else:
-            total = 0
-            # For each of local states
-            for m_s in self.states:
-                # For each other state
-                total = total + (other * self)
-            return total
+        try:
+            if other.__class__==SingleState or other.__class__==State:
+                total = 0
+                # For each of local states
+                for m_s in self.states:
+                    # For each other state
+                    total = total + (other * self)
+                return total
+            else:
+                s = self.copy()
+                for s_s in s.states:
+                    s_s.mult *= other
+                return s
+        except:
+            return other.__mul__(self)
+
 
     def __mul__(self, other):
         '''
@@ -186,12 +191,18 @@ class State:
         :param state: state to which to be applied
         :return: inner product with state
         '''
-        total = 0
-        # For each of local states
-        for m_s in self.states:
-            # For each other state
-            total = total + (m_s * other)
-        return total
+        if other.__class__==SingleState or other.__class__==State:
+            total = 0
+            # For each of local states
+            for m_s in self.states:
+                # For each other state
+                total = total + (m_s * other)
+            return total
+        else:
+            s = self.copy()
+            for s_s in s.states:
+                s_s.mult *= other
+            return s
 
     def __eq__(self, other):
         if other.__class__==State:
@@ -238,6 +249,9 @@ class XOp(Operator):
     def __mul__(self, state):
         return (COp(self.index) * state) + (AOp(self.index) * state)
 
+    def __add__(self, other):
+        pass #TODO
+
 class COp(Operator):
     def __init__(self, index):
         self.index = index
@@ -245,19 +259,31 @@ class COp(Operator):
     def __call__(self, state):
         return self.__mul__(state)
 
-    def __mul__(self, state):
-        if state.__class__==State:
-            state = state.copy()
-            for i in xrange(len(state.states)):
-                state.states[i].particles[self.index] += 1
-                state.states[i].mult *= math.sqrt(state.states[i].particles[self.index])
-            state.states = [s for s in state.states if abs(s.mult)>0]
-            return state
-        elif state.__class__==SingleState:
-            state = state.copy()
-            state.particles[self.index] += 1
-            state.mult *= math.sqrt(state.particles[self.index])
-            return state
+    def __mul__(self, other):
+        if other.__class__==State:
+            other = other.copy()
+            for i in xrange(len(other.states)):
+                other.states[i].particles[self.index] += 1
+                other.states[i].mult *= sympy.sqrt(other.states[i].particles[self.index])
+            other.states = [s for s in other.states if abs(s.mult) > 0]
+            return other
+        elif other.__class__==SingleState:
+            other = other.copy()
+            other.particles[self.index] += 1
+            other.mult *= sympy.sqrt(other.particles[self.index])
+            return other
+        elif issubclass(other.__class__,Operator):
+            # a * O -> [a O]
+            return OpProduct([self, other])
+        self.mult *= other
+
+    def __add__(self, other):
+        pass #TODO
+
+    def __str__(self):
+        return self.__repr__()
+    def __repr__(self):
+        return "a'_"+str(self.index)
 
 class AOp(Operator):
     def __init__(self, index):
@@ -266,21 +292,103 @@ class AOp(Operator):
     def __call__(self, state):
         return self.__mul__(state)
 
-    def __mul__(self, state):
-        if state.__class__==State:
-            state = state.copy()
-            for i in xrange(len(state.states)):
-                state.states[i].mult *= math.sqrt(state.states[i].particles[self.index])
-                state.states[i].particles[self.index] -= 1
-            state.states = [s for s in state.states if abs(s.mult)>0]
-            return state
-        elif state.__class__==SingleState:
-            state = state.copy()
-            state.mult *= math.sqrt(state.particles[self.index])
-            state.particles[self.index] -= 1
-            return state
+    def __mul__(self, other):
+        if other.__class__==State:
+            other = other.copy()
+            for i in xrange(len(other.states)):
+                if other.states[i].particles[self.index]<=0:
+                    other.states[i].mult = 0
+                else:
+                    other.states[i].mult *= sympy.sqrt(other.states[i].particles[self.index])
+                    other.states[i].particles[self.index] -= 1
+            other.states = [s for s in other.states if abs(s.mult) > 0]
+            return other
+        elif other.__class__==SingleState:
+            other = other.copy()
+            if other.particles[self.index]>0:
+                other.mult *= sympy.sqrt(other.particles[self.index])
+                other.particles[self.index] -= 1
+                return other
+            else:
+                return State([])
+        elif issubclass(other.__class__,Operator):
+            # a * O -> [a O]
+            return OpProduct([self, other])
+        self.mult *= other
 
-class POperator(Operator):
+    def __add__(self, other):
+        pass #TODO
+
+    def __str__(self):
+        return self.__repr__()
+    def __repr__(self):
+        return "a_"+str(self.index)
+
+
+class OpProduct(Operator):
+    def __init__(self, ops):
+        self.ops = ops[:]
+    def __rmul__(self, other):
+        if issubclass(other.__class__, Operator):
+            if other.__class__==OpProduct:
+                return OpProduct(other.ops + self.ops)
+            else:
+                return OpProduct([other] + self.ops)
+        else:
+            other.__mul__(self)
+    def __mul__(self, other):
+        if issubclass(other.__class__,Operator):
+            if other.__class__ == OpProduct:
+                return OpProduct(self.ops + other.ops)
+            else:
+                return OpProduct(self.ops + [other])
+        elif other.__class__ == SingleState or other.__class__ == State:
+            acc = other
+            for op in reversed(self.ops):
+                acc = op * acc
+            return acc
+
+    def __add__(self, other):
+        pass #TODO
+
+    def __str__(self):
+        return self.__repr__()
+    def __repr__(self):
+        return " ".join([str(op) for op in self.ops])
+
+class OpSum(Operator):
+    def __init__(self, ops):
+        self.ops = ops[:]
+    def __rmul__(self, other):
+        if issubclass(other.__class__, Operator):
+            if other.__class__==OpProduct:
+                return OpProduct(other.ops + self.ops)
+            else:
+                return OpProduct([other] + self.ops)
+        else:
+            other.__mul__(self)
+    def __mul__(self, other):
+        if issubclass(other.__class__,Operator):
+            if other.__class__ == OpProduct:
+                return OpProduct(self.ops + other.ops)
+            else:
+                return OpProduct(self.ops + [other])
+        elif other.__class__ == SingleState or other.__class__ == State:
+            acc = State([])
+            for op in reversed(self.ops):
+                acc += op * other
+            return acc
+
+
+    def __add__(self, other):
+        pass #TODO
+
+    def __str__(self):
+        return self.__repr__()
+    def __repr__(self):
+        return " ".join([str(op) for op in self.ops])
+
+class DeltaH(Operator):
     def __init__(self, ladders, mult=1):
         '''
         Creates a perturbation operator

@@ -1,5 +1,6 @@
 import itertools
 import sympy
+from sympy import latex
 
 
 class braket:
@@ -96,7 +97,7 @@ class SingleState:
         return s
 
     def __str__(self):
-        mstr = "" if self.mult==1 else str(self.mult)
+        mstr = "" if self.mult==1 else latex(self.mult)
         if self.bk == braket.KET:
             return mstr+"|"+",".join([str(i) for i in self.particles])+">"
         elif self.bk == braket.BRA:
@@ -238,12 +239,12 @@ class XOp(Operator):
     def __str__(self):
         return self.__repr__()
     def __repr__(self):
-        mstr = "" if (self.mult==1) else str(self.mult)
+        mstr = "" if (self.mult==1) else latex(self.mult)
         return mstr + "x_" + str(self.index)
     def _repr_latex_(self):
         return "$"+self._latex()+"$"
     def _latex(self, *args):
-        mstr = "" if (self.mult==1) else str(self.mult)
+        mstr = "" if (self.mult==1) else latex(self.mult)
         return mstr + "x_{" + str(self.index)+"}"
     def copy(self):
         return XOp(self.index,self.mult)
@@ -288,12 +289,12 @@ class COp(Operator):
     def __str__(self):
         return self.__repr__()
     def __repr__(self):
-        mstr = "" if (self.mult==1) else str(self.mult)
+        mstr = "" if (self.mult==1) else latex(self.mult)
         return mstr+"a'_"+str(self.index)
     def _repr_latex_(self):
         return "$"+self._latex()+"$"
     def _latex(self, *args):
-        mstr = "" if (self.mult==1) else str(self.mult)
+        mstr = "" if (self.mult==1) else latex(self.mult)
         return mstr+"a^{\dag}_{"+str(self.index)+"}"
     def copy(self):
         return COp(self.index,self.mult)
@@ -344,12 +345,12 @@ class AOp(Operator):
     def __str__(self):
         return self.__repr__()
     def __repr__(self):
-        mstr = "" if (self.mult==1) else str(self.mult)
+        mstr = "" if (self.mult==1) else latex(self.mult)
         return mstr+"a_"+str(self.index)
     def _repr_latex_(self):
         return "$"+self._latex()+"$"
     def _latex(self, *args):
-        mstr = "" if (self.mult==1) else str(self.mult)
+        mstr = "" if (self.mult==1) else latex(self.mult)
         return mstr+"a_{"+str(self.index)+"}"
     def copy(self):
         return AOp(self.index,self.mult)
@@ -400,12 +401,12 @@ class OpProduct(Operator):
     def __str__(self):
         return self.__repr__()
     def __repr__(self):
-        mstr = "" if (self.mult == 1) else str(self.mult)
+        mstr = "" if (self.mult == 1) else latex(self.mult)
         return mstr+"(" + (" ".join([str(op) for op in self.ops])) + ")"
     def _repr_latex_(self):
         return "$"+self._latex()+"$"
     def _latex(self, *args):
-        mstr = "" if (self.mult == 1) else str(self.mult)
+        mstr = "" if (self.mult == 1) else latex(self.mult)
         return mstr+"(" + (" ".join([op._latex() for op in self.ops])) + ")"
     def copy(self):
         return OpProduct(self.ops, self.mult)
@@ -457,13 +458,13 @@ class OpSum(Operator):
     def __str__(self):
         return self.__repr__()
     def __repr__(self):
-        mstr = "" if (self.mult == 1) else str(self.mult)
+        mstr = "" if (self.mult == 1) else latex(self.mult)
         return mstr + "(" + (" + ".join([str(op) for op in self.ops])) + ")"
 
     def _repr_latex_(self):
         return "$"+self._latex()+"$"
     def _latex(self, *args):
-        mstr = "" if (self.mult == 1) else str(self.mult)
+        mstr = "" if (self.mult == 1) else latex(self.mult)
         return mstr + "(" + (" + ".join([op._latex() for op in self.ops])) + ")"
 
     def copy(self):

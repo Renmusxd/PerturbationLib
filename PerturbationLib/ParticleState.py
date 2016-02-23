@@ -239,7 +239,7 @@ class XOp(Operator):
     def __str__(self):
         return self.__repr__()
     def __repr__(self):
-        mstr = "" if (self.mult==1) else str(self.mult)
+        mstr = "" if (self.mult==1) else latex(self.mult)
         return mstr + "x_" + str(self.index)
     def _repr_latex_(self):
         return "$"+self._latex()+"$"
@@ -289,7 +289,7 @@ class COp(Operator):
     def __str__(self):
         return self.__repr__()
     def __repr__(self):
-        mstr = "" if (self.mult==1) else str(self.mult)
+        mstr = "" if (self.mult==1) else latex(self.mult)
         return mstr+"a'_"+str(self.index)
     def _repr_latex_(self):
         return "$"+self._latex()+"$"
@@ -345,7 +345,7 @@ class AOp(Operator):
     def __str__(self):
         return self.__repr__()
     def __repr__(self):
-        mstr = "" if (self.mult==1) else str(self.mult)
+        mstr = "" if (self.mult==1) else latex(self.mult)
         return mstr+"a_"+str(self.index)
     def _repr_latex_(self):
         return "$"+self._latex()+"$"
@@ -401,7 +401,7 @@ class OpProduct(Operator):
     def __str__(self):
         return self.__repr__()
     def __repr__(self):
-        mstr = "" if (self.mult == 1) else str(self.mult)
+        mstr = "" if (self.mult == 1) else latex(self.mult)
         return mstr+"(" + (" ".join([str(op) for op in self.ops])) + ")"
     def _repr_latex_(self):
         return "$"+self._latex()+"$"
@@ -458,7 +458,7 @@ class OpSum(Operator):
     def __str__(self):
         return self.__repr__()
     def __repr__(self):
-        mstr = "" if (self.mult == 1) else str(self.mult)
+        mstr = "" if (self.mult == 1) else latex(self.mult)
         return mstr + "(" + (" + ".join([str(op) for op in self.ops])) + ")"
     def _repr_latex_(self):
         return "$"+self._latex()+"$"

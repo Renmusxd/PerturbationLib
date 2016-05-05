@@ -40,7 +40,7 @@ class SingleState:
         if other.__class__==SingleState:
             if other.bk==braket.BRA and self.bk==braket.KET:
                 matching = True
-                for i in xrange(len(self.particles)):
+                for i in range(len(self.particles)):
                     if self.particles[i]!=other.particles[i]:
                         matching = False
                         break
@@ -67,7 +67,7 @@ class SingleState:
         if other.__class__==SingleState:
             if self.bk==braket.BRA and other.bk==braket.KET:
                 matching = True
-                for i in xrange(len(self.particles)):
+                for i in range(len(self.particles)):
                     if self.particles[i]!=other.particles[i]:
                         matching = False
                         break
@@ -91,6 +91,10 @@ class SingleState:
         return SingleState(self.particles, self.mult)
 
     def transpose(self):
+        '''
+        Takes transpose of the state
+        :return: conjugate of multiplier and ket/bra of state
+        '''
         s = self.copy()
         s.bk = not s.bk
         s.mult = sympy.conjugate(s.mult)
@@ -171,7 +175,7 @@ class State:
 
     def __eq__(self, other):
         if other.__class__==State:
-            for i in xrange(len(self.states)):
+            for i in range(len(self.states)):
                 if self.states[i]!=other.states[i]:
                     return False
             return True
@@ -179,20 +183,24 @@ class State:
 
     def __neg__(self):
         newstate = self.copy()
-        for i in xrange(len(self.states)):
+        for i in range(len(self.states)):
             newstate.states[i].mult = -self.states[i].mult
         return newstate
 
     def transpose(self):
+        '''
+        Takes transpose of each state
+        :return: conjugate of multipliers and ket/bra of states
+        '''
         newstate = self.copy()
-        for i in xrange(len(self.states)):
+        for i in range(len(self.states)):
             newstate.states[i] = newstate.states[i].transpose()
         return newstate
 
     def __str__(self):
         return self.__repr__()
     def __repr__(self):
-        strlist = [str(self.states[i]) for i in xrange(len(self.states))]
+        strlist = [str(self.states[i]) for i in range(len(self.states))]
         return " + ".join(strlist)
     def _repr_latex_(self):
         return "$"+self._latex()+"$"
@@ -260,7 +268,7 @@ class COp(Operator):
     def __mul__(self, other):
         if other.__class__==State:
             other = other.copy()
-            for i in xrange(len(other.states)):
+            for i in range(len(other.states)):
                 other.states[i].particles[self.index] += 1
                 other.states[i].mult *= sympy.sqrt(other.states[i].particles[self.index])
             other.states = [s for s in other.states if abs(s.mult) > 0]
@@ -310,7 +318,7 @@ class AOp(Operator):
     def __mul__(self, other):
         if other.__class__==State:
             other = other.copy()
-            for i in xrange(len(other.states)):
+            for i in range(len(other.states)):
                 if other.states[i].particles[self.index]<=0:
                     other.states[i].mult = 0
                 else:
@@ -497,12 +505,12 @@ class DeltaH(Operator):
         # Annihilation:      a|n> = sqrt(n).|n-1>
         output_states = []
         # For each particle
-        for l_indx in xrange(len(self.pert)):
+        for l_indx in range(len(self.pert)):
             # For each possible number of creation (implicit and annihilation) operators
-            for ladder_value in xrange(self.pert[l_indx]):
+            for ladder_value in range(self.pert[l_indx]):
                 # Create list of operators
                 used_ops = [COp(l_indx)]*ladder_value + [AOp(l_indx)]*(self.pert[l_indx]-(ladder_value+1))
-                print used_ops
+                print(used_ops)
                 perms = itertools.permutations(used_ops)
                 # For every possible arrangement of the operators
                 acc_state = state.copy()
@@ -510,7 +518,7 @@ class DeltaH(Operator):
                     sel_state = state.copy()
                     for op in perm:
                         sel_state = op * sel_state
-                    print sel_state
+                    print(sel_state)
                     acc_state.mult += sel_state.mult
                 output_states.append(acc_state)
         return output_states
@@ -525,7 +533,7 @@ def canAddSingleStates(state1, state2):
     if len(state1.particles)==len(state2.particles):
         if state1.bk!=state2.bk:
             return False
-        for i in xrange(len(state1.particles)):
+        for i in range(len(state1.particles)):
             if state1.particles[i]!=state2.particles[i]:
                 return False
         return True
@@ -544,7 +552,7 @@ def addSingleStates(state1, state2):
 def addSingleStateToState(state, singlestate):
     newstates = [s.copy() for s in state.states]
     added = False
-    for i in xrange(len(newstates)):
+    for i in range(len(newstates)):
         if canAddSingleStates(singlestate,newstates[i]):
             newstates[i] = addSingleStates(singlestate, newstates[i])
             added = True

@@ -1,15 +1,19 @@
+"""
+A library for SOH level perturbation theory
+"""
+
 import itertools
 import sympy
 from sympy import latex
 
 
-class braket:
+class Braket:
     BRA = True
     KET = False
 
 
 class SingleState:
-    def __init__(self, particles, mult=1, bk=braket.KET):
+    def __init__(self, particles, mult=1, bk=Braket.KET):
         self.particles = particles[:]
         self.mult = mult
         self.bk = bk
@@ -38,7 +42,7 @@ class SingleState:
         :return:
         '''
         if other.__class__==SingleState:
-            if other.bk==braket.BRA and self.bk==braket.KET:
+            if other.bk==Braket.BRA and self.bk==Braket.KET:
                 matching = True
                 for i in range(len(self.particles)):
                     if self.particles[i]!=other.particles[i]:
@@ -65,7 +69,7 @@ class SingleState:
         :return: int
         '''
         if other.__class__==SingleState:
-            if self.bk==braket.BRA and other.bk==braket.KET:
+            if self.bk==Braket.BRA and other.bk==Braket.KET:
                 matching = True
                 for i in range(len(self.particles)):
                     if self.particles[i]!=other.particles[i]:
@@ -102,9 +106,9 @@ class SingleState:
 
     def __str__(self):
         mstr = "" if self.mult==1 else latex(self.mult)
-        if self.bk == braket.KET:
+        if self.bk == Braket.KET:
             return mstr+"|"+",".join([str(i) for i in self.particles])+">"
-        elif self.bk == braket.BRA:
+        elif self.bk == Braket.BRA:
             return mstr+"<"+",".join([str(i) for i in self.particles])+"|"
     def __repr__(self):
         return self.__str__()
@@ -125,7 +129,7 @@ class State:
         self.states = [state.copy() for state in states if abs(state.mult)>0]
 
     @classmethod
-    def initFromList(cls, particleStates, bk=braket.KET):
+    def initFromList(cls, particleStates, bk=Braket.KET):
         '''
         State constructor
         :param particleStates: Array of particle states

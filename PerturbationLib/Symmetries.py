@@ -1,5 +1,7 @@
+from abc import ABCMeta, abstractmethod
 
-class Symmetry:
+
+class Symmetry(metaclass=ABCMeta):
     """
     A class containing information as to how to
     combine and calculate representations.
@@ -19,7 +21,7 @@ class Symmetry:
 
     def combine(self, sym):
         """
-        Combine a given U(N) symmetry with another U(N) symmetry
+        Combine a given symmetry with another symmetry
         :param sym: other U(N) with same N
         :return: new U(N) with sum of multiplets
         """
@@ -31,26 +33,22 @@ class Symmetry:
             return self.__class__(self.name, self.N, mapRepr)
         raise Exception("Symmetries do not match: "+self.name+", "+sym.name)
 
-    def precombine(self, sym):
-        """
-        Combine a given U(N) symmetry with another U(N) symmetry
-        :param sym: other U(N) with same N
-        :return: new U(N) with sum of multiplets
-        """
-        if self.name==sym.name:
-            mapRepr = set()
-            for r1 in self.multiplets:
-                for r2 in sym.multiplets:
-                    mapRepr.add(self.combineRepr(r2, r1))
-            return self.__class__(self.name, self.N, mapRepr)
-        raise Exception("Symmetries do not match: "+self.name+", "+sym.name)
-
+    @abstractmethod
     def combineRepr(self, r1, r2):
+        '''
+        Combines two representations of the symmetry.
+        :return: combined repr (may be a sum of repr)
+        '''
         raise Exception("Method was not overridden")
 
+    @abstractmethod
     def containsSinglet(self):
+        '''
+        :return: true if repr contains a singlet
+        '''
         raise Exception("Method was not overridden")
 
+    @abstractmethod
     def singlet(self):
         '''
         Gives a singlet of the given group
@@ -58,6 +56,7 @@ class Symmetry:
         '''
         raise Exception("Method was not overridden")
 
+    @abstractmethod
     def inverse(self):
         '''
         Gives the conjugate representation
@@ -65,6 +64,12 @@ class Symmetry:
         '''
         raise Exception("Method was not overridden")
 
+    def __repr__(self):
+        return "\{self.name\}"
+    def _latex(self,*args):
+        return self.__repr__()
+    def _repr_latex(self):
+        return "$"+self._latex()+"$"
 
 class U(Symmetry):
     """
@@ -110,20 +115,3 @@ class U(Symmetry):
 
     def __repr__(self):
         return "U("+str(self.N)+"){"+(" + ".join([str(x) for x in self.multiplets]))+"}"
-
-class SU(Symmetry):
-    """
-    SU(N)
-    """
-    def __init__(self, name, N, multiplets):
-        super().__init__(name, N, multiplets)
-        raise Exception("Not yet implemented")
-
-
-class SO(Symmetry):
-    """
-    SO(N)
-    """
-    def __init__(self, name, N, multiplets):
-        super().__init__(name, N, multiplets)
-        raise Exception("Not yet implemented")

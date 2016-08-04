@@ -5,7 +5,7 @@ from ParticleState import *
 
 
 class Interaction:
-    def __init__(self, startingstate, H_pert):
+    def __init__(self, theory):
         pass
 
     def amplitude(self, endstate):

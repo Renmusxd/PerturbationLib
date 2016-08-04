@@ -1,4 +1,4 @@
-from Utilities import truncCombinations
+from . import Utilities
 
 class Theory:
     """
@@ -12,7 +12,7 @@ class Theory:
         else:
             self.fields = fields
         if gaugeFields is None:
-            self.gaugeFields = []
+            self.gaugeFields = {}
         else:
             self.gaugeFields = gaugeFields
         self.syms = symmetries
@@ -20,13 +20,13 @@ class Theory:
         self.Lk = None
         self.Lint = None
 
-
-    def addField(self, field, gaugeField=False):
-        if not gaugeField and self.fieldAllowed(field):
+    def addField(self, field, gaugeforsym=None):
+        if not gaugeforsym and self.fieldAllowed(field):
             self.fields.append(field)
-        elif gaugeField:
-            # TODO check
-            self.gaugeFields.append(gaugeField)
+        elif gaugeforsym:
+            # gaugeforsym is the name of the symmetry to
+            # which the field lends locality
+            self.gaugeFields[gaugeforsym] = field
         else:
             raise Exception("Field does not have required symmetries")
         self.Lk = None
@@ -66,10 +66,10 @@ class Theory:
         intNum = 0
         LintSet = set()
         fieldWeights = [(f,self.trunc) for f in self.fields] + [(f.antifield(),self.trunc) for f in self.fields]
-        for encoding in truncCombinations(fieldWeights,self.trunc):
+        for encoding in Utilities.truncCombinations(fieldWeights,self.trunc):
             accSyms = [s.singlet() for s in self.syms] # Start with all singlets
             for field in encoding:
-                accSyms = field.precombineWithSyms(accSyms)
+                accSyms = field.combineWithSyms(accSyms)
             # Make sure there's a singlet in each symmetry
             allHaveSinglets = True
             for s in accSyms:
@@ -116,6 +116,10 @@ class Theory:
         else:
             s += " + ".join([repr(i) for i in self.Lint])
         return s
+    def _latex(self, *args):
+        return self.__repr__()
+    def _repr_latex(self):
+        return "$"+self._latex()+"$"
 
 class Field:
     """
@@ -131,7 +135,7 @@ class Field:
         self.name = name
         self.anti = anti
 
-    def precombineWithSyms(self,syms):
+    def combineWithSyms(self, syms):
         '''
         Returns results of [syms] * [field.syms] as list of syms (each may be sum of reprs)
         :param syms:
@@ -146,7 +150,7 @@ class Field:
                     break
             if osym is None:
                 raise Exception("Fields do not share symmetry: "+s.name)
-            combinedSyms.append(s.precombine(osym))
+            combinedSyms.append(s.combine(osym))
         return combinedSyms
 
     def antifield(self):
@@ -198,4 +202,9 @@ class Interaction:
 
     def __repr__(self):
         return self.coupling + "".join([repr(f) for f in self.fields])
+
+    def _latex(self, *args):
+        return self.__repr__()
+    def _repr_latex(self):
+        return "$"+self._latex()+"$"
 

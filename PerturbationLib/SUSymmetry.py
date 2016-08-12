@@ -1,31 +1,37 @@
 try:
     from . import Symmetries
 except:
-    pass
-try:
     import Symmetries
-except:
-    pass
+
 
 class SU(Symmetries.Symmetry):
     """
     SU(N)
     """
-    def __init__(self, name, N, multiplets=list()):
-        super().__init__(name, N, multiplets)
+    def __init__(self, N, name=None, multiplets=list()):
+        super().__init__(N,name or 'SU('+str(N)+')', multiplets)
+        for m in multiplets:
+            if (type(m)==tuple or type(m)==list):
+                if len(m)!=(self.N-1):
+                    raise Exception("Multiplet of incorrect size")
+            elif type(m)==int:
+                # TODO
+                raise Exception("Cannot yet convert integers to multiplets")
+            else:
+                raise Exception("Incorrect multiplet type: "+str(type(m))+":"+str(m))
 
     def containsSinglet(self):
         """
         :return: true if repr contains a singlet
         """
-        return tuple((0 for _ in range(self.N))) in self.multiplets
+        return tuple((0 for _ in range(self.N-1))) in self.multiplets
 
     def singlet(self):
         """
         Gives a singlet of the given group
         :return:
         """
-        return SU(self.name, self.N, list(tuple((0 for _ in range(self.N)))))
+        return SU(self.name, self.N, list(tuple((0 for _ in range(self.N-1)))))
 
     def inverse(self):
         """
@@ -39,7 +45,10 @@ class SU(Symmetries.Symmetry):
         Combines two representations of the symmetry.
         :return: [combined repr]
         """
-        pass
+        t1 = Tableau(rep=r1)
+        t2 = Tableau(rep=r2)
+        ts = t1.combine(t2)
+        return [t.getMultiplet() for t in ts]
 
 
 class Tableau:
@@ -48,7 +57,7 @@ class Tableau:
     """
     def __init__(self, rep=None, rowshape=None, lettercols=None, letterrows=None):
         self.rep = rep
-        self.rows = tuple(rowshape)
+        self.rows = tuple(rowshape) if rowshape else None
         if self.rep is None and self.rows is None:
             raise Exception("Multiplet or Tableau shape must be defined")
         self.N = len(rep)+1 if rep else len(rowshape)
@@ -61,11 +70,11 @@ class Tableau:
         else:
             self.letterrows = letterrows
 
-    def combine(self, other):
+    def combine(self, other) -> list:
         """
         Combine this tableau with a single other
-        :param other:
-        :return: list of combinations
+        :param other: another Tableau instance
+        :return: [Tableau]
         """
         structure = self.getRows()
         letters = list(other.getRows())
@@ -88,8 +97,7 @@ class Tableau:
             obj.solidify()
         return takeList
 
-
-    def rowLen(self, r):
+    def rowLen(self, r: int) -> int:
         """
         Returns length of row plus letters
         :param r: row index
@@ -97,7 +105,7 @@ class Tableau:
         """
         return self.getRows()[r] + sum([self.letterrows[r][k] for k in self.letterrows[r]])
 
-    def canPlaceLetter(self, i, r, c):
+    def canPlaceLetter(self, i: int, r: int, c: int) -> bool:
         # Must be adjacent to existing structure
         if self.rowLen(r) != c:
             # Must be placed directly to the right of structure
@@ -136,7 +144,8 @@ class Tableau:
                 self.letterrows[r][i] = 1
             if c >= len(self.lettercols):
                 self.lettercols += [[]] * (c+1 - len(self.lettercols))
-            self.lettercols[c].append(i) # We know it's not yet in this column
+            self.lettercols[c].append(i)
+            # We know it's not yet in this column
         else:
             raise Exception("Cannot place letter")
 
@@ -149,7 +158,7 @@ class Tableau:
         self.lettercols = []
         self.letterrows = [{} for _ in range(self.N)]
 
-    def getMultiplet(self):
+    def getMultiplet(self) -> tuple:
         if (self.rep is None) and (self.rows is not None):
             rep = []
             for i in range(self.N-1):
@@ -157,10 +166,10 @@ class Tableau:
             self.rep = tuple(rep)
         return self.rep
 
-    def getRows(self):
+    def getRows(self) -> tuple:
         if (self.rows is None) and (self.rep is not None):
             rar = [0 for _ in range(self.N)]
-            for i in range(self.N - 1, -1, -1):
+            for i in range(self.N - 2, -1, -1):
                 for j in range(i + 1):
                     rar[j] += self.rep[i]
             m = min(rar)
@@ -177,15 +186,15 @@ class Tableau:
                        lettercols=[l.copy() for l in self.lettercols],
                        letterrows=[d.copy() for d in self.letterrows])
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         if type(other)==type(self):
             return str(other)==str(self)
         return False
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(str(self))
 
-    def __str__(self):
+    def __str__(self) -> str:
         rows = self.getRows()
         strlist = []
         for r in range(self.N):
@@ -195,13 +204,14 @@ class Tableau:
                 strlist.append(str(rows[r]))
         return "("+ ", ".join(strlist)+")"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__str__()
 
 
 if __name__ == "__main__":
-    t1 = Tableau(rowshape=(2,1,0))
-    t2 = Tableau(rowshape=(2,1,0))
-    combs = t1.combine(t2)
-    print(combs)
-    print(([c.getMultiplet() for c in combs]))
+    s1 = SU(3, multiplets=[(1,1)])
+    s2 = SU(3, multiplets=[(1,1)])
+
+    s3 = s1.combine(s2)
+
+    print("{0} * {1} = {2}".format(s1.multiplets, s2.multiplets, s3.multiplets))

@@ -1,11 +1,14 @@
-from . import Utilities
+try:
+    from . import Utilities
+except:
+    import Utilities
+
 
 class Theory:
     """
     Maintains a list of applied symmetries and added fields,
     calculated allowed terms up to a truncation level.
     """
-
     def __init__(self,symmetries,fields=None,gaugeFields=None,trunc=4):
         if fields is None:
             self.fields = []
@@ -32,13 +35,13 @@ class Theory:
         self.Lk = None
         self.Lint = None
 
-    def getL(self):
+    def getL(self) -> list:
         """
         :return: whole lagrangian
         """
         return self.getK() + self.getInt()
 
-    def getK(self):
+    def getK(self) -> list:
         """
         :return: return kinetic terms
         """
@@ -46,7 +49,7 @@ class Theory:
             self.calculateL()
         return self.Lk
 
-    def getInt(self):
+    def getInt(self) -> list:
         """
         :return: interactions terms
         """
@@ -65,6 +68,7 @@ class Theory:
         # Make all combinations of trunc #fields and trunc #antifields
         intNum = 0
         LintSet = set()
+        LkSet = set()
         fieldWeights = [(f,self.trunc) for f in self.fields] + [(f.antifield(),self.trunc) for f in self.fields]
         for encoding in Utilities.truncCombinations(fieldWeights,self.trunc):
             accSyms = [s.singlet() for s in self.syms] # Start with all singlets
@@ -77,16 +81,17 @@ class Theory:
             if allHaveSinglets:
                 if len(encoding)!=2 or encoding[0].name != encoding[1].name:
                     couple = Interaction(encoding,"g_{"+str(intNum)+"}")
-                    if not couple in LintSet:
+                    if couple not in LintSet:
                         LintSet.add(couple)
                         intNum += 1
                 else:
-                    LintSet.add(Interaction(encoding,"m_{"+str(encoding[0].name)+"}"))
+                    LkSet.add(Interaction(encoding,"m_{"+str(encoding[0].name)+"}"))
+        self.Lk = sorted(list(LkSet), key=lambda k: len(k.fields))
         self.Lint = sorted(list(LintSet), key=lambda k: len(k.fields))
 
     def fieldAllowed(self,field):
         '''
-        Returns whether a field may be added to the theory, precicely whether
+        Returns whether a field may be added to the theory, precisely whether
         it contains the appropriate symmetries
         '''
         for f in self.syms:
@@ -180,7 +185,7 @@ class Interaction:
             newlist = []
             added = False
             for (fname,fdel,fcount) in self.intRepr:
-                if (f.name == fname):
+                if f.name == fname:
                     newlist.append( (fname,fdel + (-1 if f.anti else 1), fcount+1))
                     added = True
                 else:

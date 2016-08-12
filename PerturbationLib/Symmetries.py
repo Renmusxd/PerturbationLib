@@ -9,14 +9,14 @@ class Symmetry(metaclass=ABCMeta):
     remove ambiguity. A conversion method will be implemented for
     each class.
     """
-    def __init__(self, name, N, multiplets):
+    def __init__(self, N, name, multiplets):
         """
         Create a symmetry
         :param name: unique identifier for symmetry
         :param multiplets: sum of multiplets (i.e. (1) + (3) + ...)
         """
-        self.name = name
         self.N = N
+        self.name = name
         self.multiplets = list(multiplets)
 
     def combine(self, sym):
@@ -25,12 +25,12 @@ class Symmetry(metaclass=ABCMeta):
         :param sym: other U(N) with same N
         :return: new U(N) with sum of multiplets
         """
-        if self.name==sym.name and self.N ==sym.N:
-            mapRepr = set()
+        if self.name == sym.name and self.N == sym.N:
+            mapRepr = []
             for r1 in self.multiplets:
                 for r2 in sym.multiplets:
-                    mapRepr.update(self.combineRepr(r1, r2))
-            return self.__class__(self.name, self.N, mapRepr)
+                    mapRepr += self.combineRepr(r1, r2)
+            return self.__class__(self.N, self.name, mapRepr)
         raise Exception("Symmetries do not match: "+self.name+", "+sym.name)
 
     @abstractmethod
@@ -65,7 +65,7 @@ class Symmetry(metaclass=ABCMeta):
         raise Exception("Method was not overridden")
 
     def __repr__(self):
-        return "\{self.name\}"
+        return "\{"+self.name+"\}"
     def _latex(self,*args):
         return self.__repr__()
     def _repr_latex(self):
@@ -75,8 +75,8 @@ class U(Symmetry):
     """
     U(N) symmetry
     """
-    def __init__(self, name, N, multiplets):
-        super().__init__(name, N, multiplets)
+    def __init__(self, N, name=None, multiplets=list()):
+        super().__init__(N, name or 'U('+str(N)+')', multiplets)
         if N!=1:
             raise Exception("U(N>1) not yet implemented")
 
@@ -100,14 +100,14 @@ class U(Symmetry):
 
     def singlet(self):
         if self.N == 1:
-            return U(self.name, self.N, [(0,)])
+            return U(self.N, self.name, [(0,)])
         else:
             raise Exception("U(N>1) not yet implemented")
 
     def inverse(self):
         if self.N == 1:
             mults = [(-x[0],) for x in self.multiplets]
-            return U(self.name, self.N, mults)
+            return U(self.N, self.name, mults)
         else:
             raise Exception("U(N>1) not yet implemented")
 

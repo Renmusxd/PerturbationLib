@@ -7,7 +7,7 @@ except:
     import Theory
 
 
-class Feynmann:
+class Feynman:
     """
     Please remember that this is essentially the subset sum problem which
     is NP-Complete.

@@ -1,2 +1,9 @@
-.idea/*
+.idea/
 .DS_Store
+PerturbationLib/ParticleState.pyc
+PerturbationLib/Symmetries.pyc
+PerturbationLib/Theory.pyc
+PerturbationLib/Utilities.pyc
+PerturbationLib/__init__.pyc
+PerturbationLib/__pycache__/
+PerturbationLib/tests/__pycache__/

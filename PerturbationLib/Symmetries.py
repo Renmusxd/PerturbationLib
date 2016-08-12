@@ -25,11 +25,11 @@ class Symmetry(metaclass=ABCMeta):
         :param sym: other U(N) with same N
         :return: new U(N) with sum of multiplets
         """
-        if self.name==sym.name:
+        if self.name==sym.name and self.N ==sym.N:
             mapRepr = set()
             for r1 in self.multiplets:
                 for r2 in sym.multiplets:
-                    mapRepr.add(self.combineRepr(r1, r2))
+                    mapRepr.update(self.combineRepr(r1, r2))
             return self.__class__(self.name, self.N, mapRepr)
         raise Exception("Symmetries do not match: "+self.name+", "+sym.name)
 
@@ -37,7 +37,7 @@ class Symmetry(metaclass=ABCMeta):
     def combineRepr(self, r1, r2):
         '''
         Combines two representations of the symmetry.
-        :return: combined repr (may be a sum of repr)
+        :return: [combined repr]
         '''
         raise Exception("Method was not overridden")
 
@@ -83,20 +83,18 @@ class U(Symmetry):
     def combineRepr(self, r1, r2):
         """
         Combines the multiplets for two U(N) symmetries, returns new multiplet
+        :param r1:
         :param r2:
         :return:
         """
         if self.N==1:
-            # Return a tuple
-            return r1[0] + r2[0],
+            return [(r1[0] + r2[0],)]
         else:
             raise Exception("U(N>1) not yet implemented")
 
     def containsSinglet(self):
         if self.N==1:
-            for m in self.multiplets:
-                if m[0] == 0:
-                    return True
+            return (0,) in self.multiplets
         else:
             raise Exception("U(N>1) not yet implemented")
 

@@ -1,5 +1,5 @@
 """
-A library for SOH level perturbation theory
+A library for SOH level perturbation theory. Mostly for keeping track of constants.
 """
 
 import itertools

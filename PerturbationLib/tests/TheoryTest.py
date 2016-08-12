@@ -1,6 +1,11 @@
-from Symmetries import U
-from Theory import Theory, Field
-from Utilities import *
+try:
+    from ..Symmetries import U
+    from ..Theory import Theory, Field
+    from ..Utilities import *
+except:
+    from Symmetries import U
+    from Theory import Theory, Field
+    from Utilities import *
 
 print(weightedTruncatedPowerset([("a",2),("b",2)],4))
 

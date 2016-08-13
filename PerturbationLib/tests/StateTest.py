@@ -1,7 +1,5 @@
-try:
-    from ..ParticleState import *
-except:
-    from ParticleState import *
+from PerturbationLib.ParticleState import *
+
 
 def A():
     a = SingleState([1,0])

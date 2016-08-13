@@ -1,18 +1,11 @@
-try:
-    from ..Symmetries import U
-    from ..Theory import Theory, Field
-    from ..Utilities import *
-except:
-    from Symmetries import U
-    from Theory import Theory, Field
-    from Utilities import *
-
-print(weightedTruncatedPowerset([("a",2),("b",2)],4))
+from PerturbationLib.Symmetries import U
+from PerturbationLib.Theory import Theory, Field
+from PerturbationLib.Utilities import *
 
 if __name__ == "__main__":
-    t = Theory([U("charge",1,[])], trunc=4)
-    f = Field("\phi",[U("charge",1,[(1,)])])
+    t = Theory([U(1)], trunc=4)
+    f = Field("\phi",[U(1,multiplets=[(1,)])])
     t.addField(f)
-    f = Field("\psi",[U("charge",1,[(-3,)])])
+    f = Field("\psi",[U(1,multiplets=[(-3,)])])
     t.addField(f)
     print(t)

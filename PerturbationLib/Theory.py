@@ -171,6 +171,12 @@ class Field:
     def __repr__(self):
         return "\\bar{"+self.name+"}" if self.anti else self.name
 
+    def __hash__(self):
+        return hash(repr(self))
+
+    def __eq__(self, other):
+        return type(self)==type(other) and repr(self)==repr(other)
+
 
 class Interaction:
     """

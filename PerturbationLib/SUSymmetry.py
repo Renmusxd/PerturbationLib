@@ -31,14 +31,14 @@ class SU(Symmetries.Symmetry):
         Gives a singlet of the given group
         :return:
         """
-        return SU(self.name, self.N, list(tuple((0 for _ in range(self.N-1)))))
+        return SU(self.N, self.name, [tuple((0 for _ in range(self.N-1)))])
 
     def inverse(self):
         """
         Gives the conjugate representation
         :return:
         """
-        return SU(self.name,self.N,[m[::-1] for m in self.multiplets])
+        return SU(self.N,self.name,[m[::-1] for m in self.multiplets])
 
     def combineRepr(self, r1, r2):
         """

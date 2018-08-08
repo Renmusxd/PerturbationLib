@@ -1,8 +1,8 @@
 """
 A package for keeping track of energy flow and so forth
 """
-import numpy
-from PerturbationLib import Theory, Utilities
+from PerturbationLib.Theory import *
+from PerturbationLib.Utilities import *
 
 
 class Feynman:
@@ -10,7 +10,7 @@ class Feynman:
     Please remember that this is essentially the subset sum problem which
     is NP-Complete.
     """
-    def __init__(self, theory: Theory.Theory):
+    def __init__(self, theory: Theory):
         interactions = theory.getInt()
         fieldnames = set()
         for inter in interactions:

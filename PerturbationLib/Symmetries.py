@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+from typing import Sequence, Tuple
 
 
 class Symmetry(metaclass=ABCMeta):
@@ -9,65 +10,102 @@ class Symmetry(metaclass=ABCMeta):
     remove ambiguity. A conversion method will be implemented for
     each class.
     """
-    def __init__(self, N, name, multiplets):
+    def __init__(self, name: str, multiplets: Sequence[Tuple[int, ...]]):
         """
         Create a symmetry
         :param name: unique identifier for symmetry
         :param multiplets: sum of multiplets (i.e. (1) + (3) + ...)
         """
-        self.N = N
         self.name = name
-        self.multiplets = list(multiplets)
+        if multiplets is None:
+            self.multiplets = [self.singletRepr()]
+        else:
+            self.multiplets = list(multiplets)
 
-    def combine(self, sym):
+    def combine(self, sym: 'Symmetry') -> 'Symmetry':
         """
         Combine a given symmetry with another symmetry
         :param sym: other U(N) with same N
         :return: new U(N) with sum of multiplets
         """
-        if self.name == sym.name and self.N == sym.N:
+        if self.matchesSymmetry(sym):
             mapRepr = []
             for r1 in self.multiplets:
                 for r2 in sym.multiplets:
                     mapRepr += self.combineRepr(r1, r2)
-            return self.__class__(self.N, self.name, mapRepr)
+            return self.constructWithNewRepr(mapRepr)
         raise Exception("Symmetries do not match: "+self.name+", "+sym.name)
 
-    @abstractmethod
-    def combineRepr(self, r1, r2):
-        '''
-        Combines two representations of the symmetry.
-        :return: [combined repr]
-        '''
-        raise Exception("Method was not overridden")
-
-    @abstractmethod
-    def containsSinglet(self):
-        '''
-        :return: true if repr contains a singlet
-        '''
-        raise Exception("Method was not overridden")
-
-    @abstractmethod
-    def singlet(self):
-        '''
+    def singlet(self) -> 'Symmetry':
+        """
         Gives a singlet of the given group
         :return:
-        '''
+        """
+        return self.constructWithNewRepr([self.singletRepr()])
+
+    def inverse(self) -> 'Symmetry':
+        """
+        Gives the conjugate representation
+        :return:
+        """
+        return self.constructWithNewRepr(self.inverseRepr())
+
+    def __call__(self, *args: Tuple[int, ...]) -> 'Symmetry':
+        return self.constructWithNewRepr(args)
+
+    @abstractmethod
+    def constructWithNewRepr(self, newrepr: Sequence[Tuple[int, ...]]) -> 'Symmetry':
+        """
+        Create a new version of this symmetry with new representations.
+        :param newrepr: new representations
+        :return: Symmetry with new representations
+        """
         raise Exception("Method was not overridden")
 
     @abstractmethod
-    def inverse(self):
-        '''
-        Gives the conjugate representation
-        :return:
-        '''
+    def combineRepr(self, r1: Tuple[int, ...], r2: Tuple[int, ...]) -> Tuple[int, ...]:
+        """
+        Combines two representations of the symmetry.
+        :return: [combined repr]
+        """
         raise Exception("Method was not overridden")
 
-    def __repr__(self):
-        return "\{"+self.name+"\}"
+    @abstractmethod
+    def containsSinglet(self) -> bool:
+        """
+        :return: true if repr contains a singlet
+        """
+        raise Exception("Method was not overridden")
 
-    def _latex(self,*args):
+    @abstractmethod
+    def singletRepr(self) -> Tuple[int, ...]:
+        """
+        Gives a singlet representation of the given group
+        :return:
+        """
+        raise Exception("Method was not overridden")
+
+    @abstractmethod
+    def inverseRepr(self) -> Sequence[Tuple[int, ...]]:
+        """
+        Gives the conjugate representation representation/multiplets
+        :return:
+        """
+        raise Exception("Method was not overridden")
+
+    @abstractmethod
+    def matchesSymmetry(self, sym: 'Symmetry') -> bool:
+        """
+        True/False if symmetries may be combined.
+        :param sym:
+        :return:
+        """
+        return self.name == sym.name
+
+    def __repr__(self):
+        return self.name
+
+    def _latex(self, *args):
         return self.__repr__()
     
     def _repr_latex(self):
@@ -78,12 +116,21 @@ class U(Symmetry):
     """
     U(N) symmetry
     """
-    def __init__(self, N, name=None, multiplets=None):
-        super().__init__(N, name or 'U('+str(N)+')', multiplets)
+    def __init__(self, N: int, name: str = None, multiplets: Sequence[Tuple[int, ...]] = None):
+        self.N = N
+        super().__init__(name or 'U('+str(N)+')', multiplets)
         if N != 1:
             raise Exception("U(N>1) not yet implemented")
 
-    def combineRepr(self, r1, r2):
+    def constructWithNewRepr(self, newrepr: Sequence[Tuple[int, ...]]) -> 'U':
+        """
+        Create a new version of this symmetry with new representations.
+        :param newrepr: new representations
+        :return: Symmetry with new representations
+        """
+        return U(self.N, self.name, newrepr)
+
+    def combineRepr(self, r1, r2) -> Sequence[Tuple[int, ...]]:
         """
         Combines the multiplets for two U(N) symmetries, returns new multiplet
         :param r1:
@@ -95,24 +142,27 @@ class U(Symmetry):
         else:
             raise Exception("U(N>1) not yet implemented")
 
-    def containsSinglet(self):
-        if self.N==1:
+    def containsSinglet(self) -> bool:
+        if self.N == 1:
             return (0,) in self.multiplets
         else:
             raise Exception("U(N>1) not yet implemented")
 
-    def singlet(self):
+    def singletRepr(self) -> Tuple[int, ...]:
         if self.N == 1:
-            return U(self.N, self.name, [(0,)])
+            return 0,
+        raise Exception("U(N>1) not yet implemented")
+
+    def inverseRepr(self) -> 'Sequence[Tuple[int]]':
+        if self.N == 1:
+            return [(-x[0],) for x in self.multiplets]
         else:
             raise Exception("U(N>1) not yet implemented")
 
-    def inverse(self):
-        if self.N == 1:
-            mults = [(-x[0],) for x in self.multiplets]
-            return U(self.N, self.name, mults)
-        else:
-            raise Exception("U(N>1) not yet implemented")
+    def matchesSymmetry(self, sym: 'Symmetry') -> bool:
+        if isinstance(sym, U):
+            return self.name == sym.name and self.N == sym.N
+        return False
 
     def __repr__(self):
         return "U("+str(self.N)+"){"+(" + ".join([str(x) for x in self.multiplets]))+"}"

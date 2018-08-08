@@ -1,6 +1,6 @@
 from PerturbationLib import Utilities
 from PerturbationLib.Symmetries import Symmetry
-from typing import Iterable, MutableMapping, List
+from typing import Iterable, MutableMapping, List, Sequence
 
 
 class Field:
@@ -9,11 +9,8 @@ class Field:
     maintains a list of multiplets for each symmetry as well
     as other important information.
     """
-    def __init__(self, name: str, symmetries: Iterable[Symmetry] = None, anti: bool = False):
-        if symmetries is None:
-            self.syms = []
-        else:
-            self.syms = list(s for s in symmetries)
+    def __init__(self, name: str, *symmetries: Symmetry, anti: bool = False):
+        self.syms = list(symmetries)
         self.name = name
         self.anti = anti
 
@@ -41,19 +38,25 @@ class Field:
         :return: antifield with correct symmetry multiplets
         '''
         antisyms = [s.inverse() for s in self.syms]
-        return Field(self.name, antisyms, anti=(not self.anti))
+        return Field(self.name, *antisyms, anti=(not self.anti))
 
     def copy(self) -> 'Field':
-        return Field(self.name, self.syms.copy(), self.anti)
-
-    def __repr__(self):
-        return "\\bar{"+self.name+"}" if self.anti else self.name
+        return Field(self.name, *self.syms, anti=self.anti)
 
     def __hash__(self):
         return hash(repr(self))
 
     def __eq__(self, other):
         return type(self) == type(other) and repr(self) == repr(other)
+
+    def __repr__(self):
+        return "\\bar{"+self.name+"}" if self.anti else self.name
+
+    def _latex(self, *args):
+        return self.__repr__()
+
+    def _repr_latex_(self):
+        return "${}$".format(self._latex())
 
 
 class Interaction:
@@ -68,14 +71,14 @@ class Interaction:
         for f in fields:
             newlist = []
             added = False
-            for (fname,fdel,fcount) in self.intRepr:
+            for fname, fdel, fcount in self.intRepr:
                 if f.name == fname:
-                    newlist.append((fname,fdel + (-1 if f.anti else 1), fcount+1))
+                    newlist.append((fname, fdel + (-1 if f.anti else 1), fcount+1))
                     added = True
                 else:
-                    newlist.append((fname,fdel,fcount))
+                    newlist.append((fname, fdel, fcount))
             if not added:
-                newlist.append((f.name,(-1 if f.anti else 1),1))
+                newlist.append((f.name, (-1 if f.anti else 1), 1))
             self.intRepr = newlist
         self.intRepr = tuple([(a, abs(b), c) for (a, b, c) in self.intRepr])
 
@@ -95,8 +98,8 @@ class Interaction:
     def _latex(self, *args):
         return self.__repr__()
 
-    def _repr_latex(self):
-        return "$"+self._latex()+"$"
+    def _repr_latex_(self):
+        return "${}$".format(self._latex())
 
 
 class Theory:
@@ -104,22 +107,24 @@ class Theory:
     Maintains a list of applied symmetries and added fields,
     calculated allowed terms up to a truncation level.
     """
-    def __init__(self, symmetries: Iterable[Symmetry], fields=None, gaugefields: MutableMapping[Symmetry, Field] = None,
+    def __init__(self, *symmetries: Symmetry, fields: Sequence[Field] = None,
+                 gaugefields: MutableMapping[Symmetry, Field] = None,
                  trunc: int = 4):
-        if fields is None:
-            self.fields = []
-        else:
-            self.fields = fields
+        self.syms = symmetries
+        self.fields = []
+        self.trunc = trunc
+        self.Lk = None
+        self.Lint = None
         if gaugefields is None:
             self.gaugeFields = {}
         else:
             self.gaugeFields = gaugefields
-        self.syms = tuple(s for s in symmetries)
-        self.trunc = trunc
-        self.Lk = None
-        self.Lint = None
 
-    def addField(self, field: Field, gaugeforsym: Symmetry=None):
+        if fields is not None:
+            for field in fields:
+                self.addField(field)
+
+    def addField(self, field: Field, gaugeforsym: Symmetry = None):
         if not gaugeforsym and self.fieldAllowed(field):
             self.fields.append(field)
         elif gaugeforsym:
@@ -153,7 +158,7 @@ class Theory:
             self.calculateL()
         return self.Lint
 
-    def calculateL(self):
+    def calculateL(self) -> None:
         """
         Populate with all allowed interactions and kinetic terms
         """
@@ -166,7 +171,7 @@ class Theory:
         Lintset = set()
         lkset = set()
         fieldweights = [(f, self.trunc) for f in self.fields] + [(f.antifield(), self.trunc) for f in self.fields]
-        for encoding in Utilities.truncCombinations(fieldweights,self.trunc):
+        for encoding in Utilities.truncCombinations(fieldweights, self.trunc):
             accsyms = [s.singlet() for s in self.syms]  # Start with all singlets
             for field in encoding:
                 accsyms = field.combineWithSyms(accsyms)
@@ -185,7 +190,7 @@ class Theory:
         self.Lk = sorted(list(lkset), key=lambda k: len(k.fields))
         self.Lint = sorted(list(Lintset), key=lambda k: len(k.fields))
 
-    def fieldAllowed(self, field) -> bool:
+    def fieldAllowed(self, field: Field) -> bool:
         '''
         Returns whether a field may be added to the theory, precisely whether
         it contains the appropriate symmetries
@@ -207,20 +212,20 @@ class Theory:
     def __repr__(self):
         if (self.Lk is None) or (self.Lint is None):
             self.calculateL()
-        s = ""
+        s = []
         if self.Lk is None:
-            s += "\mathcal{L}_k"
+            s.append("\mathcal{L}_k")
         else:
-            s += " + ".join([repr(k) for k in self.Lk])
+            s.append(" + ".join([repr(k) for k in self.Lk]))
         if self.Lint is None:
-            s += "\mathcal{L}_{int}"
+            s.append("\mathcal{L}_{int}")
         else:
-            s += " + ".join([repr(i) for i in self.Lint])
-        return s
+            s.append(" + ".join([repr(i) for i in self.Lint]))
+        return " + ".join(s)
 
     def _latex(self, *args):
         return self.__repr__()
 
-    def _repr_latex(self):
-        return "$"+self._latex()+"$"
+    def _repr_latex_(self):
+        return "${}$".format(self._latex())
 

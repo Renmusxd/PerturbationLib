@@ -1,45 +1,45 @@
-from PerturbationLib import Symmetries
+from PerturbationLib.Symmetries import Symmetry
+from typing import Sequence, Tuple, List, Iterable, Mapping
 
 
-class SU(Symmetries.Symmetry):
+class SU(Symmetry):
     """
     SU(N)
     """
-    def __init__(self, N, name=None, multiplets=None):
-        if multiplets is None:
-            multiplets = []
-        super().__init__(N,name or 'SU('+str(N)+')', multiplets)
-        for m in multiplets:
-            if (type(m)==tuple or type(m)==list):
-                if len(m)!=(self.N-1):
+    def __init__(self, N: int, name: str = None, multiplets: Sequence[Tuple[int, ...]] = None):
+        self.N = N
+        super().__init__(name or 'SU('+str(N)+')', multiplets)
+        for m in self.multiplets:
+            if type(m) == tuple or type(m) == list:
+                if len(m) != (self.N-1):
                     raise Exception("Multiplet of incorrect size")
-            elif type(m)==int:
+            elif type(m) == int:
                 # TODO
                 raise Exception("Cannot yet convert integers to multiplets")
             else:
                 raise Exception("Incorrect multiplet type: "+str(type(m))+":"+str(m))
 
-    def containsSinglet(self):
+    def containsSinglet(self) -> bool:
         """
         :return: true if repr contains a singlet
         """
-        return tuple((0 for _ in range(self.N-1))) in self.multiplets
+        return tuple(0 for _ in range(self.N-1)) in self.multiplets
 
-    def singlet(self):
+    def singletRepr(self) -> Tuple[int, ...]:
         """
-        Gives a singlet of the given group
+        Give the single representation of the SU group.
         :return:
         """
-        return SU(self.N, self.name, [tuple((0 for _ in range(self.N-1)))])
+        return tuple(0 for _ in range(self.N-1))
 
-    def inverse(self):
+    def inverseRepr(self) -> Sequence[Tuple[int, ...]]:
         """
         Gives the conjugate representation
         :return:
         """
-        return SU(self.N,self.name,[m[::-1] for m in self.multiplets])
+        return [m[::-1] for m in self.multiplets]
 
-    def combineRepr(self, r1, r2):
+    def combineRepr(self, r1: Tuple[int, ...], r2: Tuple[int, ...]):
         """
         Combines two representations of the symmetry.
         :return: [combined repr]
@@ -49,27 +49,44 @@ class SU(Symmetries.Symmetry):
         ts = t1.combine(t2)
         return [t.getMultiplet() for t in ts]
 
+    def constructWithNewRepr(self, newrepr: Sequence[Tuple[int, ...]]) -> 'SU':
+        return SU(self.N, self.name, newrepr)
+
+    def matchesSymmetry(self, sym: Symmetry) -> bool:
+        if isinstance(sym, SU):
+            return sym.name == self.name and sym.N == self.N
+
+    def __repr__(self):
+        return "SU("+str(self.N)+"){"+(" + ".join([str(x) for x in self.multiplets]))+"}"
+
 
 class Tableau:
     """
     A tableau object for SU(N) combinations
     """
-    def __init__(self, rep=None, rowshape=None, lettercols=None, letterrows=None):
+    def __init__(self, rep: Tuple[int, ...] = None,
+                 rowshape: Iterable[int] = None,
+                 lettercols: Iterable[Iterable[int]] = None,
+                 letterrows: Iterable[Mapping[int, int]] = None):
         self.rep = rep
         self.rows = tuple(rowshape) if rowshape else None
+
         if self.rep is None and self.rows is None:
             raise Exception("Multiplet or Tableau shape must be defined")
-        self.N = len(rep)+1 if rep else len(rowshape)
+
+        self.N = len(rep)+1 if rep else len(self.rows)
+
         if lettercols is None:
             self.lettercols = []
         else:
-            self.lettercols = lettercols
+            self.lettercols = list(list(x) for x in lettercols)
+
         if letterrows is None:
             self.letterrows = [{} for _ in range(self.N)]
         else:
-            self.letterrows = letterrows
+            self.letterrows = list(dict(x) for x in letterrows)
 
-    def combine(self, other) -> list:
+    def combine(self, other: 'Tableau') -> List:
         """
         Combine this tableau with a single other
         :param other: another Tableau instance
@@ -80,15 +97,15 @@ class Tableau:
         takeList = [self]
         putList = []
         for i in range(len(letters)):
-            while letters[i]>0:
+            while letters[i] > 0:
                 # Take a letter 'i'
                 letters[i] -= 1
-                for r in range(i,len(structure)):
+                for r in range(i, len(structure)):
                     for table in takeList:
                         rowlen = table.rowLen(r)
-                        if table.canPlaceLetter(i,r,rowlen):
+                        if table.canPlaceLetter(i, r, rowlen):
                             clone = table.clone()
-                            clone.placeLetter(i,r,rowlen)
+                            clone.placeLetter(i, r, rowlen)
                             putList.append(clone)
                 takeList = putList
                 putList = []
@@ -105,6 +122,13 @@ class Tableau:
         return self.getRows()[r] + sum([self.letterrows[r][k] for k in self.letterrows[r]])
 
     def canPlaceLetter(self, i: int, r: int, c: int) -> bool:
+        """
+        Return whether a letter i can be placed at position (r,c)
+        :param i: letter
+        :param r: row
+        :param c: col
+        :return:
+        """
         # Must be adjacent to existing structure
         if self.rowLen(r) != c:
             # Must be placed directly to the right of structure
@@ -129,14 +153,14 @@ class Tableau:
                     cur = self.letterrows[j][i]
                 prevtot += prv - cur
                 if prevtot < 0:
-                    raise Exception("More {0} than {1} by row {2}".format(i,i-1,j))
+                    raise Exception("More {} than {} by row {}".format(i, i-1, j))
             if prevtot == 0:
                 return False
 
         return True
 
-    def placeLetter(self, i, r, c):
-        if self.canPlaceLetter(i,r,c):
+    def placeLetter(self, i: int, r: int, c: int):
+        if self.canPlaceLetter(i, r, c):
             if i in self.letterrows[r]:
                 self.letterrows[r][i] += 1
             else:
@@ -157,7 +181,7 @@ class Tableau:
         self.lettercols = []
         self.letterrows = [{} for _ in range(self.N)]
 
-    def getMultiplet(self) -> tuple:
+    def getMultiplet(self) -> Tuple[int, ...]:
         if (self.rep is None) and (self.rows is not None):
             rep = []
             for i in range(self.N-1):
@@ -165,7 +189,7 @@ class Tableau:
             self.rep = tuple(rep)
         return self.rep
 
-    def getRows(self) -> tuple:
+    def getRows(self) -> Tuple[int, ...]:
         if (self.rows is None) and (self.rep is not None):
             rar = [0 for _ in range(self.N)]
             for i in range(self.N - 2, -1, -1):
@@ -180,14 +204,14 @@ class Tableau:
             self.rows = tuple(rar)
         return self.rows
 
-    def clone(self):
+    def clone(self) -> 'Tableau':
         return Tableau(rowshape=self.getRows(),
                        lettercols=[l.copy() for l in self.lettercols],
                        letterrows=[d.copy() for d in self.letterrows])
 
     def __eq__(self, other) -> bool:
-        if type(other)==type(self):
-            return str(other)==str(self)
+        if type(other) == type(self):
+            return str(other) == str(self)
         return False
 
     def __hash__(self) -> int:
@@ -198,10 +222,10 @@ class Tableau:
         strlist = []
         for r in range(self.N):
             if self.rowLen(r) - rows[r] > 0:
-                strlist.append(str(rows[r])+"{"+str(self.rowLen(r)-rows[r])+"}")
+                strlist.append(str(rows[r]) + "{" + str(self.rowLen(r) - rows[r]) + "}")
             else:
                 strlist.append(str(rows[r]))
-        return "("+ ", ".join(strlist)+")"
+        return "(" + ", ".join(strlist) + ")"
 
     def __repr__(self) -> str:
         return self.__str__()

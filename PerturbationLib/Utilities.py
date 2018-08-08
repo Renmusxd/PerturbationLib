@@ -1,50 +1,61 @@
 import math
 import numpy
+from typing import Sequence, TypeVar, List, Tuple, Generator
+
+T = TypeVar('T')
 
 
-def truncatedPowerset(values,trunc,depth=0):
-    if len(values)==0 or depth>=trunc:
+def truncatedPowerset(values: Sequence[T], trunc: int, depth: int = 0) -> List[List[T]]:
+    """
+    Get the powerset of values up to order trunc
+    :param values: set of values from which to make powerset
+    :param trunc: maximum size of powerset items
+    :param depth: internal variable to subtract from trunc
+    :return:
+    """
+    if len(values) == 0 or depth >= trunc:
         return [[]]
-    elif len(values)==1:
+    elif len(values) == 1:
         h = values[0]
-        return [[h],[]]
-    elif len(values)>1:
-        h, t = values[0],values[1:]
-        woh = truncatedPowerset(t,trunc,depth)
-        wh =[[h] + l for l in truncatedPowerset(t,trunc,depth+1)]
+        return [[h], []]
+    elif len(values) > 1:
+        h, t = values[0], values[1:]
+        woh = truncatedPowerset(t, trunc, depth)
+        wh = [[h] + l for l in truncatedPowerset(t, trunc, depth+1)]
         return wh + woh
 
 
-def truncCombinations(values,trunc):
-    return weightedTruncatedPowerset(values,trunc)[:-1]
+def truncCombinations(values: Sequence[Tuple[T, int]], trunc: int) -> List[List[T]]:
+    return weightedTruncatedPowerset(values, trunc)[:-1]
 
 
-def weightedTruncatedPowerset(values,trunc,depth=0):
+def weightedTruncatedPowerset(values: Sequence[Tuple[T, int]], trunc: int, depth: int = 0) -> List[List[T]]:
     '''
     Acts like the above, but groups values into equivalence classes of appropriate sizes
     and returns the powerset with that modulo
     :param values: tuples of (obj,weight)
     :param trunc: max size of set in powerset
+    :param depth: internally used variable to subtract from trunc
     :return: powerset mod obj
     '''
-    if len(values)==0 or depth>=trunc:
+    if len(values) == 0 or depth >= trunc:
         return [[]]
-    elif len(values)==1:
-        (h,hw) = values[0]
-        return [[h]*i for i in reversed(range(min(hw+1,trunc-depth+1)))]
-    elif len(values)>1:
-        (h,hw), t = values[0], values[1:]
+    elif len(values) == 1:
+        (h, hw) = values[0]
+        return [[h]*i for i in reversed(range(min(hw+1, trunc-depth+1)))]
+    elif len(values) > 1:
+        (h, hw), t = values[0], values[1:]
         woh = weightedTruncatedPowerset(t, trunc, depth)
 
         wht = t
-        if hw>1:
-            wht = [(h,hw-1)] + t
-        wh = [[h] + l for l in weightedTruncatedPowerset(wht,trunc,depth+1)]
+        if hw > 1:
+            wht = [(h, hw-1)] + t
+        wh = [[h] + l for l in weightedTruncatedPowerset(wht, trunc, depth+1)]
 
         return wh + woh
 
 
-def genInOutPairs(fieldvec):
+def genInOutPairs(fieldvec) -> Generator[Tuple[numpy.ndarray, numpy.ndarray], None, None]:
     """
     Generates all pairs of vectors (i,o) such that i + o = fieldvec
     :param fieldvec:

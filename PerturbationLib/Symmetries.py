@@ -66,18 +66,21 @@ class Symmetry(metaclass=ABCMeta):
 
     def __repr__(self):
         return "\{"+self.name+"\}"
+
     def _latex(self,*args):
         return self.__repr__()
+    
     def _repr_latex(self):
         return "$"+self._latex()+"$"
+
 
 class U(Symmetry):
     """
     U(N) symmetry
     """
-    def __init__(self, N, name=None, multiplets=list()):
+    def __init__(self, N, name=None, multiplets=None):
         super().__init__(N, name or 'U('+str(N)+')', multiplets)
-        if N!=1:
+        if N != 1:
             raise Exception("U(N>1) not yet implemented")
 
     def combineRepr(self, r1, r2):
@@ -87,7 +90,7 @@ class U(Symmetry):
         :param r2:
         :return:
         """
-        if self.N==1:
+        if self.N == 1:
             return [(r1[0] + r2[0],)]
         else:
             raise Exception("U(N>1) not yet implemented")

@@ -1,21 +1,21 @@
 """
-A library for SOH level perturbation theory. Mostly for keeping track of constants.
+A library for SHO level perturbation theory. Mostly for keeping track of constants.
 """
 
 import itertools
 import sympy
 from sympy import latex
+from typing import Iterable
 
 
 class Braket:
     BRA = True
     KET = False
 
-
 class SingleState:
-    def __init__(self, particles, mult=1, bk=Braket.KET):
-        self.particles = particles[:]
-        self.mult = mult
+    def __init__(self, particles: Iterable[int], multiplier: float = 1.0, bk=Braket.KET):
+        self.particles = list(particles)
+        self.mult = multiplier
         self.bk = bk
 
     def __eq__(self, other):

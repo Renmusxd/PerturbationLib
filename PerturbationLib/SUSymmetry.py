@@ -1,14 +1,13 @@
-try:
-    from . import Symmetries
-except:
-    import Symmetries
+from PerturbationLib import Symmetries
 
 
 class SU(Symmetries.Symmetry):
     """
     SU(N)
     """
-    def __init__(self, N, name=None, multiplets=list()):
+    def __init__(self, N, name=None, multiplets=None):
+        if multiplets is None:
+            multiplets = []
         super().__init__(N,name or 'SU('+str(N)+')', multiplets)
         for m in multiplets:
             if (type(m)==tuple or type(m)==list):

@@ -2,13 +2,7 @@
 A package for keeping track of energy flow and so forth
 """
 import numpy
-
-try:
-    from . import Theory
-    from . import Utilities
-except:
-    import Theory
-    import Utilities
+from PerturbationLib import Theory, Utilities
 
 
 class Feynman:
@@ -18,12 +12,12 @@ class Feynman:
     """
     def __init__(self, theory: Theory.Theory):
         interactions = theory.getInt()
-        fieldNames = set()
+        fieldnames = set()
         for inter in interactions:
             for f in inter.fields:
-                fieldNames.add(f.name)
+                fieldnames.add(f.name)
         # Gives the ordered list of fields
-        self.indexf = sorted(fieldNames)
+        self.indexf = sorted(fieldnames)
 
         # Gives the indices of fields
         self.findex = {self.indexf[i]: 2*i for i in range(len(self.indexf))}

@@ -1,6 +1,7 @@
 import math
 import numpy
-from typing import Sequence, TypeVar, List, Tuple, Generator
+from functools import reduce
+from typing import Sequence, TypeVar, List, Tuple, Generator, Mapping
 
 T = TypeVar('T')
 
@@ -55,80 +56,73 @@ def weightedTruncatedPowerset(values: Sequence[Tuple[T, int]], trunc: int, depth
         return wh + woh
 
 
-def genInOutPairs(fieldvec) -> Generator[Tuple[numpy.ndarray, numpy.ndarray], None, None]:
+def genInOutPairs(fieldvec: Sequence[int],
+                  swapvec: Sequence[int] = None) -> Generator[Tuple[numpy.ndarray, numpy.ndarray], None, None]:
     """
-    Generates all pairs of vectors (i,o) such that i + o = fieldvec
-    :param fieldvec:
+    Generates all pairs of vectors (i,o) such that i[k] + o[swapvec[k]] = fieldvec
+    :param fieldvec: list of particles
+    :param swapvec: list of places to swap
     :yield: tuples (i,o)
     """
+    if swapvec is None:
+        swapvec = list(range(len(fieldvec)))
+
     fi = numpy.array([0 for _ in range(len(fieldvec))])
     fo = numpy.array(fieldvec)
-    fb = [False for _ in range(len(fieldvec))]
 
     i = 0
-
-    yield numpy.array(fi), numpy.array(fo)
+    yield fi, fo
     while i < len(fieldvec):
-        if fo[i] > 0:
-            fo[i] -= 1
+        if fo[swapvec[i]] > 0:
+            fo[swapvec[i]] -= 1
             fi[i] += 1
             i = 0
-            yield numpy.array(fi), numpy.array(fo)
+            yield fi, fo
         else:
-            fo[i] = fi[i]
+            fo[swapvec[i]] = fi[i]
             fi[i] = 0
             i += 1
 
 
-def genParticlePerms(fieldvec):
-    s = len(fieldvec)
-    if s%2 != 0:
-        raise Exception("Must have field and anti-field slot for each field")
-    perms = list(genInOutPairs(fieldvec))[1:-1]
-    for fi, fo in perms:
-        for i in range(0, s, 2):
-            fo[i], fo[i + 1] = fo[i + 1], fo[i]
-    return perms
-
-
-def swapAntis(vec):
+def swapAntis(vec: Sequence[int]) -> Sequence[int]:
     vec = numpy.array(vec)
     for i in range(0, len(vec), 2):
         vec[i], vec[i + 1] = vec[i + 1], vec[i]
     return vec
 
 
-def chooseNFromM(n,m):
+def chooseNFromM(n: int, m: int) -> Generator[List[int], None, None]:
     if n == 0:
         yield [0 for _ in range(m)]
     elif m == 1:
         yield [n]
     else:
         for i in range(n+1):
-            for tail in chooseNFromM(n-i,m-1):
+            for tail in chooseNFromM(n-i, m-1):
                 yield [i] + tail
 
 
-def vectorPath(start, end, nodes, trunc):
-    result = []
+def genVectorPaths(start: Sequence[int], end: Sequence[int],
+                   nodes: Mapping[T, Tuple[Sequence[int], Sequence[int]]],
+                   trunc: int) -> Generator[List[Tuple[T, Sequence[int], Sequence[int]]], None, None]:
+    start, end = numpy.asarray(start), numpy.asarray(end)
     if trunc == 0:
-        return result
-    for i in range(len(nodes)):
-        req, prod = nodes[i]
-        s1 = numpy.array(start + req)
-        for x in s1:
-            # If a single element is negative, this is an invalid path
-            if x < 0:
-                break
+        yield []
+
+    for node in nodes:
+        node_tuple = (node, nodes[node][0], nodes[node][1])
+        required_particles, produced_particles = numpy.asarray(nodes[node][0]), numpy.asarray(nodes[node][1])
+        comb = start + required_particles
+        if not numpy.all(numpy.positive(comb)):
+            continue
+        after_inter = comb + produced_particles
+        if numpy.array_equal(after_inter, end):
+            yield [node_tuple]
         else:
-            s = s1 + prod
-            if numpy.array_equal(s, end):
-                result.append([i])
-            subpaths = vectorPath(s,end,nodes,trunc-1)
-            result += [[i] + path for path in subpaths]
-    return result
+            for subpath in genVectorPaths(start, end, nodes, trunc - 1):
+                yield [node_tuple] + subpath
 
 
 if __name__ == "__main__":
-    l = list(chooseNFromM(3,3))
-    print(len(l),l)
+    for x in genInOutPairs([1,1,1], swapvec=[1,0,2]):
+        print(x)

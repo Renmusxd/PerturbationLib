@@ -15,30 +15,36 @@ class Field:
         self.anti = anti
 
     def combineWithSyms(self, syms: Iterable[Symmetry]) -> List[Symmetry]:
-        '''
+        """
         Returns results of [syms] * [field.syms] as list of syms (each may be sum of reprs)
         :param syms:
         :return: [syms]
-        '''
+        """
         combinedsyms = []
 
-        for os in syms:
+        for osym in syms:
             sym = None
             for s in self.syms:
-                if os.name == s.name:
+                if osym.name == s.name:
                     sym = s
                     break
             if sym is None:
-                raise Exception("Fields do not share symmetry: "+os.name)
-            combinedsyms.append(os.combine(sym))
+                raise Exception("Fields do not share symmetry: "+osym.name)
+            combinedsyms.append(osym.combine(sym))
         return combinedsyms
 
     def antifield(self) -> 'Field':
-        '''
+        """
         :return: antifield with correct symmetry multiplets
-        '''
+        """
         antisyms = [s.inverse() for s in self.syms]
         return Field(self.name, *antisyms, anti=(not self.anti))
+
+    def matterField(self) -> 'Field':
+        return self.antifield() if self.anti else self.copy()
+
+    def antiMatterField(self) -> 'Field':
+        return self.antifield() if not self.anti else self.copy()
 
     def copy(self) -> 'Field':
         return Field(self.name, *self.syms, anti=self.anti)
@@ -65,10 +71,10 @@ class Interaction:
     an associated coupling constant
     """
     def __init__(self, fields: Iterable[Field], coupling: str):
-        self.fields = fields
+        self.fields = list(fields)
         self.coupling = coupling
         self.intRepr = []
-        for f in fields:
+        for f in self.fields:
             newlist = []
             added = False
             for fname, fdel, fcount in self.intRepr:
@@ -82,8 +88,14 @@ class Interaction:
             self.intRepr = newlist
         self.intRepr = tuple([(a, abs(b), c) for (a, b, c) in self.intRepr])
 
+    def getFields(self) -> List[Field]:
+        return self.fields
+
+    def getRawFields(self) -> List[Field]:
+        return [field.matterField() for field in self.fields]
+
     def __eq__(self, other):
-        return (isinstance(other,self.__class__)) \
+        return (isinstance(other, self.__class__)) \
                and other.intRepr == self.intRepr
 
     def __ne__(self, other):
@@ -142,59 +154,60 @@ class Theory:
         """
         return self.getK() + self.getInt()
 
-    def getK(self) -> List[Interaction]:
+    def getK(self, filter_anti_dups=True) -> List[Interaction]:
         """
         :return: return kinetic terms
         """
         if (self.Lk is None) or (self.Lint is None):
-            self.calculateL()
+            self.calculateL(filter_anti_dups=filter_anti_dups)
         return self.Lk
 
-    def getInt(self) -> List[Interaction]:
+    def getInt(self, filter_anti_dups=True) -> List[Interaction]:
         """
         :return: interactions terms
         """
         if (self.Lk is None) or (self.Lint is None):
-            self.calculateL()
+            self.calculateL(filter_anti_dups=filter_anti_dups)
         return self.Lint
 
-    def calculateL(self) -> None:
+    def calculateL(self, filter_anti_dups=True) -> None:
         """
         Populate with all allowed interactions and kinetic terms
         """
         self.Lk = []
         self.Lint = []
-        # TODO calculate kinetic terms
 
         # Make all combinations of trunc #fields and trunc #antifields
         intnum = 0
-        Lintset = set()
-        lkset = set()
         fieldweights = [(f, self.trunc) for f in self.fields] + [(f.antifield(), self.trunc) for f in self.fields]
-        for encoding in Utilities.truncCombinations(fieldweights, self.trunc):
+        seen_l = set()
+        for encoding in sorted(Utilities.truncCombinations(fieldweights, self.trunc), key=lambda k: len(k)):
+            field_name_tuple = tuple(sorted([field.name for field in encoding]))
+            if filter_anti_dups and field_name_tuple in seen_l:
+                continue
+
             accsyms = [s.singlet() for s in self.syms]  # Start with all singlets
             for field in encoding:
                 accsyms = field.combineWithSyms(accsyms)
+
             # Make sure there's a singlet in each symmetry
             allhavesinglets = True
             for s in accsyms:
                 allhavesinglets = allhavesinglets and s.containsSinglet()
+
             if allhavesinglets:
+                seen_l.add(field_name_tuple)
                 if len(encoding) != 2 or encoding[0].name != encoding[1].name:
-                    couple = Interaction(encoding, "g_{"+str(intnum)+"}")
-                    if couple not in Lintset:
-                        Lintset.add(couple)
-                        intnum += 1
+                    self.Lint.append(Interaction(encoding, "g_{"+str(intnum)+"}"))
+                    intnum += 1
                 else:
-                    lkset.add(Interaction(encoding, "m_{"+str(encoding[0].name)+"}"))
-        self.Lk = sorted(list(lkset), key=lambda k: len(k.fields))
-        self.Lint = sorted(list(Lintset), key=lambda k: len(k.fields))
+                    self.Lk.append(Interaction(encoding, "m_{"+str(encoding[0].name)+"}"))
 
     def fieldAllowed(self, field: Field) -> bool:
-        '''
+        """
         Returns whether a field may be added to the theory, precisely whether
         it contains the appropriate symmetries
-        '''
+        """
         for f in self.syms:
             n = f.name
             found = False

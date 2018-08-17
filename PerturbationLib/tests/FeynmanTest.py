@@ -23,14 +23,15 @@ if __name__ == "__main__":
     endd = {("\phi", False): 2}
 
     feyn = Feynman(t)
-    paths = feyn.listPaths(startd, endd, maxorder=4)
-
-    endvec = feyn.convertDictToVec(endd)
-
-    for path in paths:
-        start = feyn.convertDictToVec(startd)
-        print(path)
-        for inter in path:
-            start += inter[1] + inter[2]
-            print(inter[1], inter[2], start)
-        assert(numpy.array_equal(start, endvec))
+    print(feyn)
+    # paths = feyn.listPaths(startd, endd, maxorder=4)
+    #
+    # endvec = feyn.convertDictToVec(endd)
+    #
+    # for path in paths:
+    #     start = feyn.convertDictToVec(startd)
+    #     print(path)
+    #     for inter in path:
+    #         start += inter[1] + inter[2]
+    #         print(inter[1], inter[2], start)
+    #     assert(numpy.array_equal(start, endvec))
